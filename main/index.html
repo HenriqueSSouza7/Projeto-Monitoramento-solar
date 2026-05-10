@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projeto Solar — Análise de Eficiência</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+<div class="dashboard" id="app">
+
+  <header class="header">
+    <div class="header-left">
+      <div class="header-icon"><i data-lucide="sun"></i></div>
+      <div>
+        <h1>Monitoramento Solar <span style="font-size: 0.5em; background: var(--solar-green); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">ANALÍTICO</span></h1>
+        <p class="header-subtitle">Comparativo Financeiro e Energético de Sistemas Solares</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn-refresh" id="btnAtualizar" onclick="processarTestes()" title="Atualizar Dados">
+        <i data-lucide="refresh-cw"></i> Atualizar Dados
+      </button>
+      <button class="btn-config" onclick="abrirModal()">
+        <i data-lucide="sliders"></i> Parâmetros do Cliente
+      </button>
+    </div>
+  </header>
+
+  <div class="demo-banner banner-erro" id="avisoErro" style="display:none;">
+    <i data-lucide="alert-circle"></i><p id="textoErro"></p>
+  </div>
+  <div class="demo-banner" id="avisoDemo" style="display:flex;">
+    <i data-lucide="info"></i><p>A apresentar dados de demonstração. Os valores simulam um ambiente real de operação. Configure o Canal para ver dados reais.</p>
+  </div>
+
+  <section>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+      <h3 class="section-title" style="margin-bottom: 0;">Comparativo de Eficiência (Estimativa Mensal)</h3>
+      <button class="btn-config" onclick="baixarRelatorioCSV()" style="background-color: var(--solar-green); color: white; border: none;">
+        <i data-lucide="download"></i> Exportar Relatório
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="solar-card stat-card" style="border-left: 4px solid var(--muted-foreground);">
+        <div class="stat-header"><i data-lucide="file-text"></i> <span class="kpi-label">Conta Original (S/ Painel)</span></div>
+        <span class="stat-value" id="projContaSem">R$ 0,00</span>
+      </div>
+      
+      <div class="solar-card stat-card" style="border-left: 4px solid var(--solar-yellow);">
+        <div class="stat-header"><i data-lucide="square"></i> <span class="kpi-label">Conta c/ Painel Fixo</span></div>
+        <span class="stat-value" id="projContaFixo">R$ 0,00</span>
+      </div>
+
+      <div class="solar-card stat-card" style="border-left: 4px solid var(--solar-green);">
+        <div class="stat-header"><i data-lucide="move"></i> <span class="kpi-label">Conta c/ Rastreador</span></div>
+        <span class="stat-value" id="projContaTrk">R$ 0,00</span>
+      </div>
+
+      <div class="solar-card stat-card">
+        <div class="stat-header"><i data-lucide="zap"></i> <span class="kpi-label">Energia Gerada A Mais</span></div>
+        <span class="stat-value highlight" id="projGanhoEnergia">+0%</span>
+        <span class="kpi-unit">rastreador x fixo</span>
+      </div>
+
+      <div class="solar-card stat-card">
+        <div class="stat-header"><i data-lucide="scale"></i> <span class="kpi-label">Lucro / Prejuízo</span></div>
+        <span class="stat-value highlight" id="projValeAPena">R$ 0,00</span>
+        <span class="kpi-unit" id="projTextoVeredito">rastreador x fixo</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Desempenho Técnico (Dados de 1 Dia de Operação)</h3>
+    <div class="panel-comparison">
+      
+      <div class="panel-section">
+        <div class="panel-badge fixed accordion-header" onclick="togglePanel('conteudoFixo', 'iconFixo')">
+          <div style="display: flex; align-items: center; gap: 0.375rem;">
+            <i data-lucide="square"></i> Painel Fixo (Base)
+          </div>
+          <i data-lucide="chevron-up" id="iconFixo" style="transition: transform 0.3s;"></i>
+        </div>
+        
+        <div id="conteudoFixo" class="panel-conteudo">
+          <div class="kpi-grid">
+            <div class="solar-card kpi-card">
+              <div class="kpi-header"><i data-lucide="sun"></i> <span class="kpi-label">Geração Total</span></div>
+              <div class="kpi-value"><span id="whFixo">0.00</span><span class="kpi-unit"> Wh</span></div>
+            </div>
+            <div class="solar-card kpi-card">
+              <div class="kpi-header"><i data-lucide="dollar-sign"></i> <span class="kpi-label">Economia no Dia</span></div>
+              <div class="kpi-value" style="font-size: 1.25rem;"><span id="rsFixo">R$ 0,00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-divider-v"></div><div class="panel-divider-h"></div>
+
+      <div class="panel-section">
+        <div class="panel-badge tracker accordion-header" onclick="togglePanel('conteudoTracker', 'iconTracker')">
+          <div style="display: flex; align-items: center; gap: 0.375rem;">
+            <i data-lucide="move"></i> Rastreador Solar
+          </div>
+          <i data-lucide="chevron-up" id="iconTracker" style="transition: transform 0.3s;"></i>
+        </div>
+
+        <div id="conteudoTracker" class="panel-conteudo">
+          <div class="kpi-grid">
+            <div class="solar-card kpi-card">
+              <div class="kpi-header"><i data-lucide="sun"></i> <span class="kpi-label">Geração Bruta</span></div>
+              <div class="kpi-value"><span id="whTrkBruto">0.00</span><span class="kpi-unit"> Wh</span></div>
+            </div>
+            <div class="solar-card kpi-card">
+              <div class="kpi-header" style="color: var(--destructive);"><i data-lucide="settings"></i> <span class="kpi-label">Gasto do Motor</span></div>
+              <div class="kpi-value" style="color: var(--destructive);"><span id="whTrkMotor">0.00</span><span class="kpi-unit"> Wh</span></div>
+            </div>
+            <div class="solar-card kpi-card">
+              <div class="kpi-header"><i data-lucide="zap"></i> <span class="kpi-label">Geração Líquida</span></div>
+              <div class="kpi-value"><span id="whTrkLiq">0.00</span><span class="kpi-unit"> Wh</span></div>
+            </div>
+            <div class="solar-card kpi-card">
+              <div class="kpi-header"><i data-lucide="dollar-sign"></i> <span class="kpi-label">Economia Líquida</span></div>
+              <div class="kpi-value" style="font-size: 1.25rem;"><span id="rsTracker">R$ 0,00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Curva de Geração (Wh por Hora do Dia)</h3>
+    <div class="solar-card chart-container">
+      <div class="chart-legend">
+        <span><span class="chart-legend-dot" style="background: var(--chart-fixo);"></span>Fixo</span>
+        <span><span class="chart-legend-dot" style="background: var(--solar-green)"></span>Rastreador Líquido</span>
+      </div>
+      <div class="chart-bars" id="containerGrafico"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="modal-overlay" id="modalConfig">
+  <div class="modal-backdrop" onclick="fecharModal()"></div>
+  <div class="solar-card modal-content" style="max-width: 35rem;">
+    <div class="modal-header">
+      <h2>Parâmetros de Simulação</h2>
+      <button class="btn-close" onclick="fecharModal()"><i data-lucide="x"></i></button>
+    </div>
+    
+    <div class="config-grid">
+      <div class="config-col">
+        <h4 style="margin-bottom: 10px; color: var(--solar-green);"><i data-lucide="home" style="width: 14px; vertical-align: middle;"></i> Dados da Residência</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Região do Brasil</label>
+          <select class="form-input" id="cfgRegiao">
+            <option value="0.85">Norte (~R$ 0,85/kWh)</option>
+            <option value="0.77">Nordeste (~R$ 0,77/kWh)</option>
+            <option value="0.89">Centro-Oeste (~R$ 0,89/kWh)</option>
+            <option value="0.78">Sudeste (~R$ 0,78/kWh)</option>
+            <option value="0.53">Sul (~R$ 0,53/kWh)</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Bandeira Tarifária Atual</label>
+          <select class="form-input" id="cfgBandeira">
+            <option value="0">Verde (Sem acréscimo)</option>
+            <option value="0.01885">Amarela (+ R$ 0,018/kWh)</option>
+            <option value="0.04463">Vermelha Pat. 1 (+ R$ 0,044/kWh)</option>
+            <option value="0.07877">Vermelha Pat. 2 (+ R$ 0,078/kWh)</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Consumo Mensal (kWh)</label>
+          <input class="form-input" type="number" id="cfgConsumoCasa" value="200" />
+        </div>
+      </div>
+
+      <div class="config-col">
+        <h4 style="margin-bottom: 10px; color: var(--solar-yellow);"><i data-lucide="calendar" style="width: 14px; vertical-align: middle;"></i> Histórico de Testes</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Data da Leitura: Painel Fixo</label>
+          <input class="form-input" type="date" id="cfgDataFixo" />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Data da Leitura: Rastreador</label>
+          <input class="form-input" type="date" id="cfgDataTracker" />
+        </div>
+
+        <div class="form-group" style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
+          <label class="form-label">Custo de Manutenção do Rastreador</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 0.8rem; font-weight: bold; color: var(--muted-foreground);">R$ / Mês</span>
+            <input class="form-input" type="number" step="0.01" id="cfgManutencao" value="5.00" />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+      <span style="font-size: 0.75rem; color: var(--muted-foreground); cursor: pointer; text-decoration: underline;" onclick="toggleDevMode()">Opções de Desenvolvedor (ThingSpeak API)</span>
+    </div>
+
+    <div id="areaDev" style="display: none; margin-top: 15px; padding: 15px; background: var(--muted); border-radius: 8px; border: 1px dashed var(--muted-foreground);">
+      <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.85rem;"><i data-lucide="database" style="width: 14px; vertical-align: middle;"></i> Conexão com Arduino</h4>
+      <div class="form-group">
+        <label class="form-label">Channel ID (Deixe vazio para Modo Demo)</label>
+        <input class="form-input" type="text" id="cfgCanal" placeholder="Ex: 2538166" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Read API Key</label>
+        <input class="form-input" type="text" id="cfgChave" placeholder="Ex: BV4S8WP94X0YY8R0" />
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">Mapeamento de Fields (ThingSpeak)</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+          <div><small style="font-size:10px;">Tensão</small><input class="form-input" type="number" id="cfgTen" title="Field da Tensão (V)"></div>
+          <div><small style="font-size:10px;">Corrente</small><input class="form-input" type="number" id="cfgCor" title="Field da Corrente (mA)"></div>
+          <div><small style="font-size:10px;">Motor</small><input class="form-input" type="number" id="cfgMot" title="Field do Consumo do Motor (W)"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="salvarConfiguracao()" style="margin-top: 20px;">
+      <i data-lucide="check-circle"></i> Aplicar e Recalcular
+    </button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
