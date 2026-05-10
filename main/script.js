@@ -4,7 +4,7 @@
 const CHAVE_CONFIG = "projeto_solar_config";
 
 let configuracao = {
-  // Dados da API do ThingSpeak (Modo Desenvolvedor)
+  // Dados da API do thingspeak (Modo desenvolvedor)
   canalId: "", 
   apiRead: "BV4S8WP94X0YY8R0",
   campos: { tensao: 1, corrente: 2, motor: 3 },
@@ -85,7 +85,7 @@ function processarFeedsDoDia(feeds) {
     const c = parseFloat(f[`field${configuracao.campos.corrente}`]) || 0;
     const m = parseFloat(f[`field${configuracao.campos.motor}`]) || 0; // Vai ler o "1.0" do ESP32 aqui
 
-    // A mágica matemática: converte a potência do minuto em Energia (Wh)
+    // Converte a potência do minuto em Energia (Wh)
     const potenciaW = (v * c) / 1000;
     const energiaWh = potenciaW / 60;
     const energiaMotorWh = m / 60;
