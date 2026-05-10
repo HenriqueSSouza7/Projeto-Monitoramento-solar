@@ -1,7 +1,6 @@
 // ==========================================
 // CONFIGURAÇÕES GLOBAIS DO SISTEMA
 // ==========================================
-// Chave usada para salvar as configurações no navegador do usuário
 const CHAVE_CONFIG = "projeto_solar_config";
 
 let configuracao = {
@@ -22,13 +21,11 @@ let configuracao = {
   }
 };
 
-// Objeto que armazena os resultados para desenhar o gráfico depois
 let dadosAnalise = {
   horas: Array(24).fill(0).map(() => ({ whFixo: 0, whTracker: 0 })),
   resumo: { whFixo: 0, whTrkBruto: 0, whTrkMotor: 0, whTrkLiq: 0 }
 };
 
-// Funções curtas para facilitar a manipulação da tela
 const $ = (id) => document.getElementById(id);
 const inserirTexto = (id, valor) => { if($(id)) $(id).textContent = valor; };
 const formatarNum = (num, casas) => Number(num).toFixed(casas);
@@ -43,32 +40,28 @@ function togglePanel(conteudoId, iconeId) {
   const conteudo = $(conteudoId);
   const icone = $(iconeId);
   
-  // Checa se o painel está fechado e abre, ou vice-versa
   if (conteudo.classList.contains('collapsed')) {
     conteudo.classList.remove('collapsed');
-    icone.style.transform = 'rotate(0deg)'; // Seta pra cima
+    icone.style.transform = 'rotate(0deg)'; 
   } else {
     conteudo.classList.add('collapsed');
-    icone.style.transform = 'rotate(-180deg)'; // Seta pra baixo
+    icone.style.transform = 'rotate(-180deg)'; 
   }
 }
 
 // ==========================================
 // LÓGICA DE MATEMÁTICA E CONEXÃO COM A API
 // ==========================================
-
-// Puxa as configurações que ficaram salvas na memória local
 function carregarConfiguracaoLocal() {
   const salva = localStorage.getItem(CHAVE_CONFIG);
   if (salva) configuracao = JSON.parse(salva);
 }
 
-// Verifica se o canal tá preenchido pra saber se usa API ou dados falsos
 function modoRealAtivo() {
   return configuracao.canalId.trim().length > 0 && configuracao.datas.fixo && configuracao.datas.tracker;
 }
 
-// Faz a requisição na internet (ThingSpeak) para buscar as leituras do Arduino
+// Faz a requisição na internet para buscar as leituras
 async function buscarDiaAPI(dataStr) {
   const url = new URL(`https://api.thingspeak.com/channels/${configuracao.canalId}/feeds.json`);
   url.searchParams.set("start", `${dataStr}T00:00:00Z`);
@@ -81,28 +74,25 @@ async function buscarDiaAPI(dataStr) {
   return json.feeds || [];
 }
 
-// Transforma os dados crus da API em energia real (Watt-hora)
+// Transforma os dados crus da API em energia real
 function processarFeedsDoDia(feeds) {
   let whGerado = 0;
   let whMotor = 0;
   const distribuicaoHoraria = Array(24).fill(0).map(() => ({ gerado: 0, gasto: 0 }));
 
   feeds.forEach(f => {
-    // Pega a tensão (V) e corrente (mA)
     const v = parseFloat(f[`field${configuracao.campos.tensao}`]) || 0;
     const c = parseFloat(f[`field${configuracao.campos.corrente}`]) || 0;
-    const m = parseFloat(f[`field${configuracao.campos.motor}`]) || 0; // Gasto do motor
+    const m = parseFloat(f[`field${configuracao.campos.motor}`]) || 0; // Vai ler o "1.0" do ESP32 aqui
 
-    // A mágica matemática: converte a potência do minuto em Energia (Wh) dividindo por 60
+    // A mágica matemática: converte a potência do minuto em Energia (Wh)
     const potenciaW = (v * c) / 1000;
     const energiaWh = potenciaW / 60;
     const energiaMotorWh = m / 60;
 
-    // Vai acumulando o total do dia
     whGerado += energiaWh;
     whMotor += energiaMotorWh;
 
-    // Guarda a energia separada por hora pra desenhar o gráfico depois
     const hora = new Date(f.created_at).getHours();
     if(hora >= 0 && hora <= 23) {
       distribuicaoHoraria[hora].gerado += energiaWh;
@@ -116,17 +106,17 @@ function processarFeedsDoDia(feeds) {
 // ==========================================
 // DADOS FICTÍCIOS (MOCK PARA APRESENTAÇÃO)
 // ==========================================
-// Só roda se o ThingSpeak não estiver configurado
 function gerarDiaMock(isTracker) {
   let whGerado = 0;
   let whMotor = 0;
   const distribuicaoHoraria = Array(24).fill(0).map(() => ({ gerado: 0, gasto: 0 }));
 
   for (let h = 6; h <= 18; h++) {
-    // Simula a curva do sol (começa fraco, forte ao meio dia, fraco a tarde)
     const intensidadeSol = Math.sin(((h - 6) / 12) * Math.PI); 
     let whDaHora = (isTracker ? 25 : 18) * intensidadeSol + (Math.random() * 2);
-    let motorDaHora = isTracker ? 3 + Math.random() : 0; 
+    
+    // Gasto calibrado para o Servomotor SG90 (~1 Watt)
+    let motorDaHora = isTracker ? 1.0 : 0; 
 
     whGerado += whDaHora;
     whMotor += motorDaHora;
@@ -145,18 +135,15 @@ function calcularEconomiaDia(wh) {
   return (wh / 1000) * tarifaKwh;
 }
 
-// Atualiza todos os textos, cards e cores da interface
 function renderizarDashboard() {
   const rs = dadosAnalise.resumo;
   const tarifaKwh = parseFloat(configuracao.financeiro.regiao) + parseFloat(configuracao.financeiro.bandeira);
   const consumoCasaKwh = parseFloat(configuracao.financeiro.consumoCasa) || 200;
   
-  // Projeta o dia de teste para um mês inteiro (30 dias)
   const geracaoMesFixoKwh = (rs.whFixo * 30) / 1000;
   const geracaoMesTrkKwh = (rs.whTrkLiq * 30) / 1000;
   const custoManutencao = parseFloat(configuracao.financeiro.manutencao) || 0;
   
-  // Calcula as três contas de luz
   const valorContaSem = consumoCasaKwh * tarifaKwh;
   const valorContaFixo = Math.max((consumoCasaKwh - geracaoMesFixoKwh) * tarifaKwh, 0);
   const valorContaTrk = Math.max((consumoCasaKwh - geracaoMesTrkKwh) * tarifaKwh, 0) + custoManutencao;
@@ -165,14 +152,12 @@ function renderizarDashboard() {
   inserirTexto("projContaFixo", formatoRS(valorContaFixo));
   inserirTexto("projContaTrk", formatoRS(valorContaTrk));
 
-  // Calcula a diferença percentual de energia entre os dois painéis
   const energiaExtraWh = rs.whTrkLiq - rs.whFixo;
   const percentualGeracao = rs.whFixo > 0 ? (energiaExtraWh / rs.whFixo) * 100 : 0;
   
   inserirTexto("projGanhoEnergia", `${percentualGeracao > 0 ? '+' : ''}${percentualGeracao.toFixed(1)}%`);
   $("projGanhoEnergia").style.color = percentualGeracao > 0 ? "var(--solar-green)" : "var(--destructive)";
 
-  // Calcula se o rastreador deu lucro ou prejuízo no mês
   const vantagemFinanceiraTrk = valorContaFixo - valorContaTrk; 
   inserirTexto("projValeAPena", `${vantagemFinanceiraTrk > 0 ? '+' : ''} ${formatoRS(vantagemFinanceiraTrk)}`);
   
@@ -184,7 +169,6 @@ function renderizarDashboard() {
     $("projTextoVeredito").textContent = "Prejuízo (rastreador x fixo)";
   }
 
-  // Preenche os cards de detalhe técnico de 1 dia
   inserirTexto("whFixo", formatarNum(rs.whFixo, 2));
   inserirTexto("rsFixo", formatoRS(calcularEconomiaDia(rs.whFixo)));
   inserirTexto("whTrkBruto", formatarNum(rs.whTrkBruto, 2));
@@ -195,16 +179,13 @@ function renderizarDashboard() {
   desenharGrafico();
 }
 
-// Cria as barrinhas HTML do gráfico baseado nos dados salvos por hora
 function desenharGrafico() {
   const container = $("containerGrafico");
   let htmlDoGrafico = "";
   const picoMaximo = Math.max(...dadosAnalise.horas.flatMap(h => [h.whFixo, h.whTracker]), 0.1);
 
-  // Pega o sol útil (das 5h da manhã as 19h da noite)
   for (let h = 5; h <= 19; h++) {
     const dadosHora = dadosAnalise.horas[h];
-    // Calcula a altura da barra em porcentagem (%) em relação ao pico máximo
     const pctFixo = Math.max((dadosHora.whFixo / picoMaximo) * 100, 1);
     const pctTracker = Math.max((dadosHora.whTracker / picoMaximo) * 100, 1);
     
@@ -222,12 +203,11 @@ function desenharGrafico() {
 }
 
 // ==========================================
-// FLUXO PRINCIPAL E BOTÕES
+// FLUXO PRINCIPAL E EVENTOS
 // ==========================================
-// Função principal que roda quando clica em "Atualizar Dados"
 async function processarTestes() {
   const btn = $("btnAtualizar").querySelector('svg');
-  if(btn) btn.classList.add("spinning"); // Faz o ícone girar
+  if(btn) btn.classList.add("spinning");
 
   try {
     let diaFixo, diaTracker;
@@ -240,13 +220,11 @@ async function processarTestes() {
       diaFixo = processarFeedsDoDia(feedsFixo);
       diaTracker = processarFeedsDoDia(feedsTracker);
     } else {
-      // Cai aqui se não preencher o Channel ID nas opções de dev
       $("avisoDemo").style.display = "flex";
       diaFixo = gerarDiaMock(false);
       diaTracker = gerarDiaMock(true);
     }
 
-    // Salva tudo na variável global pra usar no render
     dadosAnalise.resumo.whFixo = diaFixo.whGerado;
     dadosAnalise.resumo.whTrkBruto = diaTracker.whGerado;
     dadosAnalise.resumo.whTrkMotor = diaTracker.whMotor;
@@ -260,17 +238,14 @@ async function processarTestes() {
     $("avisoErro").style.display = "none";
     renderizarDashboard();
   } catch (e) {
-    // Se der erro de internet ou API inválida
     $("avisoErro").style.display = "flex";
     inserirTexto("textoErro", "Falha de comunicação: " + e.message);
   } finally {
-    if(btn) btn.classList.remove("spinning"); // Para de girar o ícone
+    if(btn) btn.classList.remove("spinning");
   }
 }
 
-// ==========================================
-// FUNÇÕES DOS MODAIS E CONFIGURAÇÕES
-// ==========================================
+// Modais e Togglers
 function abrirModal() {
   $("cfgDataFixo").value = configuracao.datas.fixo;
   $("cfgDataTracker").value = configuracao.datas.tracker;
@@ -298,7 +273,6 @@ function toggleDevMode() {
   area.style.display = area.style.display === "none" ? "block" : "none";
 }
 
-// Salva o que foi digitado no modal
 function salvarConfiguracao() {
   configuracao.datas = {
     fixo: $("cfgDataFixo").value, tracker: $("cfgDataTracker").value
@@ -323,7 +297,6 @@ function salvarConfiguracao() {
   processarTestes(); 
 }
 
-// Gera um arquivo excel com os dados
 function baixarRelatorioCSV() {
   let csv = "Hora do Dia,Energia Fixo (Wh),Energia Rastreador Liquida (Wh)\n";
   for(let h=5; h<=19; h++) {
@@ -336,7 +309,6 @@ function baixarRelatorioCSV() {
   link.click();
 }
 
-// Roda quando a página carrega pela primeira vez
 document.addEventListener("DOMContentLoaded", () => {
   carregarConfiguracaoLocal();
   processarTestes();

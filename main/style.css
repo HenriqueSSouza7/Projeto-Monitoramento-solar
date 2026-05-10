@@ -44,7 +44,6 @@ input, select { cursor: text; }
 .btn-config { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; border-radius: 9999px; background: var(--card); border: 1px solid var(--border); font-size: 0.75rem; font-weight: 500; transition: background 0.15s; }
 .btn-config:hover { background: var(--muted); }
 
-/* SISTEMA RETRÁTIL (ACORDEÃO) */
 .panel-comparison { display: flex; flex-direction: column; gap: 1.5rem; }
 @media (min-width: 1024px) { .panel-comparison { flex-direction: row; } }
 .panel-section { flex: 1; min-width: 280px; }
@@ -88,7 +87,6 @@ input, select { cursor: text; }
 .kpi-value { font-size: 1.2rem; font-weight: 700; color: var(--foreground); }
 .kpi-unit { font-size: 0.8rem; font-weight: 400; color: var(--muted-foreground); }
 
-/* Os cards se ajustam automaticamente para caber os 5 sem quebrar */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
 .stat-card { padding: 1rem; }
 .stat-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; color: var(--muted-foreground); }
